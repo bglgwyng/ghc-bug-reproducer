@@ -1,0 +1,26 @@
+name: ghc-bug-reproducer
+
+ghc-options: -Wall -Wno-unused-matches
+language: GHC2021
+default-extensions:
+  - OverloadedStrings
+  - LambdaCase
+  - RecursiveDo
+  - DeriveGeneric
+  - BlockArguments
+  - TypeFamilies
+  - FunctionalDependencies
+  - RecordWildCards
+  - ApplicativeDo
+dependencies:
+  - base
+  - reflex
+  - these
+  - containers
+  - dependent-sum
+  - mtl
+
+executables:
+  app:
+    source-dirs: app
+    main: Main.hs
