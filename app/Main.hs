@@ -126,12 +126,10 @@ matchResponseMapWithRequests' f send recv = do
     -- The decoded response and a patch that clears the outstanding responses queue
     processIncoming waitingFor outstanding inc = flip push (alignEventWithMaybe thatMaybe inc outstanding) $ \(rspMap, promptRspMap) -> do
       wf' <- sample $ currentIncremental waitingFor
+      -- This is where the error comes from
       let wf = maybe id applyAlways promptRspMap wf'
-      -- let b = case prompt of
-      --           Nothing -> undefined
-      --           Just prompt -> applyAlways prompt wf
-      -- apply
-      -- traceShowM (keys wf, keys . unPatchMap <$> prompt)
+      -- Commenting out the above line and uncommenting the below line makes the error go away
+      -- let wf = wf'
       let match rawRsp (Decoder k rspF) =
             let rsp = rspF rawRsp
              in singletonRequesterData k rsp
@@ -147,79 +145,3 @@ matchResponseMapWithRequests' f send recv = do
       This x -> Just (x, Nothing)
       That x -> Nothing
       These x y -> Just (x, Just y)
-
--- Tags each outgoing request with an identifying integer key
--- and returns the next available key, a map of response decoders
--- for requests for which there are outstanding responses, and the
--- raw requests to be sent out.
--- process ::
---   Behavior t Int ->
---   -- The next available key
---   Event t (RequesterData request) ->
---   -- The outgoing request
---   Incremental t (PatchMap Int (Decoder rawResponse response)) ->
---   -- A map of outstanding expected responses
---   Event t (Map Int rawResponse) ->
---   -- A incoming response paired with its identifying key
---   ( Event
---       t
---       ( Int,
---         PatchMap Int (Decoder rawResponse response),
---         Map Int rawRequest
---       ),
---     Event t (RequesterData response, PatchMap Int v)
---   )
--- process nextId out waitingFor inc = do
---   let e = alignEventWithMaybe pure out inc
---   let e' = flip pushAlways e \x ->
---         do
---           let b = case x of
---                 This reqs -> do
---                   -- processOutgoing nextId reqs
---                   oldNextId <- sample nextId
---                   let (result, newNextId) = flip runState oldNextId $
---                         forM (requesterDataToList dm) $ \(k :=> v) -> do
---                           n <- get
---                           put $ succ n
---                           let (rawReq, rspF) = f v
---                           return (n, rawReq, Decoder k rspF)
---                       patchWaitingFor =
---                         PatchMap $
---                           Map.fromList $
---                             (\(n, _, dec) -> (n, Just dec)) <$> result
---                       toSend = Map.fromList $ (\(n, rawReq, _) -> (n, rawReq)) <$> result
---                   return (newNextId, patchWaitingFor, toSend)
---                 That undefined -> pure $ These undefined undefined
---                 These _ _ -> pure undefined
-
---           pure $ These undefined undefined
---   fanThese e'
--- flip pushAlways out $ \dm -> do
---   oldNextId <- sample nextId
---   let (result, newNextId) = flip runState oldNextId $
---         forM (requesterDataToList dm) $ \(k :=> v) -> do
---           n <- get
---           put $ succ n
---           let (rawReq, rspF) = f v
---           return (n, rawReq, Decoder k rspF)
---       patchWaitingFor =
---         PatchMap $
---           Map.fromList $
---             (\(n, _, dec) -> (n, Just dec)) <$> result
---       toSend = Map.fromList $ (\(n, rawReq, _) -> (n, rawReq)) <$> result
---   let outResult = (newNextId, patchWaitingFor, toSend)
---   let inResult = flip push inc $ \rspMap -> do
---         wf <- sample $ currentIncremental waitingFor
---         let match rawRsp (Decoder k rspF) =
---               let rsp = rspF rawRsp
---                in singletonRequesterData k rsp
---             matches = Map.intersectionWith match rspMap wf
---         pure $
---           if Map.null matches
---             then Nothing
---             else
---               Just
---                 (Map.foldl' mergeRequesterData emptyRequesterData matches, PatchMap $ Nothing <$ matches)
---   pure (outResult, inResult)
-
--- (processOutgoing nextId out, processIncoming waitingFor inc)
